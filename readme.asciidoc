@@ -1,0 +1,4 @@
+= Albion Online Market Tool
+
+This is a simple project that utilizes the https://www.albion-online-data.com/[Albion Online Data project].
+Eventually I would like to be able to use this tool to determine easy moneymakers in the game.
