@@ -11,6 +11,7 @@ class CityMarkets(Enum):
     BM = auto()
     CAR = auto()
     BRE = auto()
+    UNKNOWN = auto()
 
     def __init__(self, _):
         properties = {

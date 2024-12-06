@@ -6,11 +6,12 @@ from dataclasses import asdict
 
 from aodp.api import get_price
 from data import Price
+from data.constants.city_markets import CityMarkets
 
 DEBUG = False
 
 
-def __get_item_price(item_ids: List[str]) -> List[Price] | None:
+def __get_item_prices(item_ids: List[str]) -> List[Price] | None:
     api_prices = get_price(item_ids)
 
     if api_prices is None:
@@ -24,7 +25,7 @@ def __get_item_price(item_ids: List[str]) -> List[Price] | None:
     return api_prices
 
 
-def __get_min_sell_price_min(prices: List[Price]) -> List[Price]:
+def __get_min_sell_price_mins(prices: List[Price]) -> List[Price]:
     lowest_found = []
     lowest_value = int(sys.maxsize)
 
@@ -40,10 +41,10 @@ def __get_min_sell_price_min(prices: List[Price]) -> List[Price]:
     return lowest_found
 
 
-def get_city_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
-    low_prices = sorted(__get_item_price(item_ids), key=lambda p: p.sell_price_min)
+def get_cities_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
+    low_prices = sorted(__get_item_prices(item_ids), key=lambda p: p.sell_price_min)
 
-    lowest = __get_min_sell_price_min(low_prices)
+    lowest = __get_min_sell_price_mins(low_prices)
 
     if DEBUG:
         prices_dicts = [asdict(price) for price in low_prices if price is not None]
@@ -52,11 +53,11 @@ def get_city_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
     return lowest
 
 
-def get_safe_city_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
-    low_prices = sorted(__get_item_price(item_ids), key=lambda price: price.sell_price_min)
-    safe_prices = list(filter(lambda p: not p.city_market.pvp, low_prices))
+def get_safe_cities_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
+    low_prices = sorted(__get_item_prices(item_ids), key=lambda price: price.sell_price_min)
+    safe_prices = list(filter(lambda p: isinstance(p.city_market, CityMarkets) and not p.city_market.pvp, low_prices))
 
-    lowest = __get_min_sell_price_min(safe_prices)
+    lowest = __get_min_sell_price_mins(safe_prices)
 
     if DEBUG:
         prices_dicts = [asdict(price) for price in safe_prices if price is not None]
@@ -65,7 +66,7 @@ def get_safe_city_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | N
     return lowest
 
 
-def __get_max_buy_price_max(prices: List[Price]) -> List[Price]:
+def __get_max_buy_price_maxes(prices: List[Price]) -> List[Price]:
     highest_found = []
     highest_value = int(-sys.maxsize)
 
@@ -81,10 +82,10 @@ def __get_max_buy_price_max(prices: List[Price]) -> List[Price]:
     return highest_found
 
 
-def get_city_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
-    prices = sorted(__get_item_price(item_ids), key=lambda price: price.buy_price_max, reverse=True)
+def get_cities_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
+    prices = sorted(__get_item_prices(item_ids), key=lambda price: price.buy_price_max, reverse=True)
 
-    highest = __get_max_buy_price_max(prices)
+    highest = __get_max_buy_price_maxes(prices)
 
     if DEBUG:
         prices_dicts = [asdict(price) for price in prices if price is not None]
@@ -93,11 +94,11 @@ def get_city_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
     return highest
 
 
-def get_safe_city_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
-    high_prices = sorted(__get_item_price(item_ids), key=lambda price: price.buy_price_max, reverse=True)
+def get_safe_cities_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
+    high_prices = sorted(__get_item_prices(item_ids), key=lambda price: price.buy_price_max, reverse=True)
     safe_prices = list(filter(lambda p: not p.city_market.pvp, high_prices))
 
-    lowest = __get_max_buy_price_max(safe_prices)
+    lowest = __get_max_buy_price_maxes(safe_prices)
 
     if DEBUG:
         prices_dicts = [asdict(price) for price in safe_prices if price is not None]
@@ -108,8 +109,8 @@ def get_safe_city_with_highest_buy_price(item_ids: List[str]) -> List[Price] | N
 
 if __name__ == '__main__':
     item = 'T2_FIBER'
-    buy_from = get_city_with_lowest_sell_price([item])
-    sell_to = get_city_with_highest_buy_price([item])
+    buy_from = get_cities_with_lowest_sell_price([item])
+    sell_to = get_cities_with_highest_buy_price([item])
 
     if not buy_from or not sell_to:
         print('Missing a buyer or seller')
@@ -125,8 +126,8 @@ if __name__ == '__main__':
         roi = profit / buy.sell_price_min
         print('This will net you {} with an ROI of {}'.format(profit, roi))
 
-    buy_from = get_safe_city_with_lowest_sell_price([item])
-    sell_to = get_safe_city_with_highest_buy_price([item])
+    buy_from = get_safe_cities_with_lowest_sell_price([item])
+    sell_to = get_safe_cities_with_highest_buy_price([item])
 
     if not buy_from or not sell_to:
         print('Missing a buyer or seller')

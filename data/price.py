@@ -16,7 +16,7 @@ class Price:
     buy_price_min_date: str
     buy_price_max: int
     buy_price_max_date: str
-    city_market: CityMarkets = field(default='CityMarkets.UNKNOWN')
+    city_market: CityMarkets = field(default=CityMarkets.UNKNOWN)
 
     def __post_init__(self):
         mapped_city = CityMarkets.get_by_city_key(self.city)
