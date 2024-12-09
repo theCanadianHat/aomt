@@ -12,7 +12,7 @@ API_BASE = '/api/v2/stats'
 PRICE_URL = '/Prices'
 
 
-def get_price(item_ids: List[str]) -> List[Price]:
+def get_prices_for_items(item_ids: List[str]) -> List[Price]:
     id_str = urllib.parse.quote(','.join(item_ids))
     url = BASE_URL + API_BASE + PRICE_URL + '/' + id_str + '.json'
     response = requests.get(url)
@@ -31,6 +31,6 @@ def get_price(item_ids: List[str]) -> List[Price]:
 
 if __name__ == '__main__':
     item_ids = ['T2_FIBER', 'T3_FIBER']
-    prices = get_price(item_ids)
+    prices = get_prices_for_items(item_ids)
     pricesDicts = [asdict(price) for price in prices]
     print(json.dumps(pricesDicts, indent=4))
