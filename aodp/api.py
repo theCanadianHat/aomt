@@ -13,20 +13,23 @@ PRICE_URL = '/Prices'
 
 
 def get_prices_for_items(item_ids: List[str]) -> List[Price]:
-    id_str = urllib.parse.quote(','.join(item_ids))
-    url = BASE_URL + API_BASE + PRICE_URL + '/' + id_str + '.json'
-    response = requests.get(url)
+    if len(item_ids) > 0:
+        id_str = urllib.parse.quote(','.join(item_ids))
+        url = BASE_URL + API_BASE + PRICE_URL + '/' + id_str + '.json'
+        response = requests.get(url)
 
-    if response.status_code != 200:
-        print(f"Error: {response.status_code}")
-        return []
+        if response.status_code != 200:
+            print(f"Error: {response.status_code}")
+            return []
 
-    json_data = response.json()
-    if not json_data:
-        print("Received an empty or None response")
-        return []
+        json_data = response.json()
+        if not json_data:
+            print("Received an empty or None response")
+            return []
 
-    return [Price(**item) for item in json_data]
+        return [Price(**item) for item in json_data]
+    else:
+        print('please provide items to search for')
 
 
 if __name__ == '__main__':

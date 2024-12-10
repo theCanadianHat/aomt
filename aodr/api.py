@@ -187,7 +187,8 @@ def get_item_data() -> List[Item]:
                         item_to_update.name = record['LocalizedNames']['EN-US']
                         item_to_update.description = record['LocalizedDescriptions']['EN-US']
                     except TypeError:
-                        print(f"{record_un} doesn't have name or description")
+                        if DEBUG:
+                            print(f"{record_un} doesn't have name or description")
 
         if DEBUG:
             print(ITEMS)
