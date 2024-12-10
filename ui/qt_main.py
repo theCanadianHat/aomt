@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
             print(f"known prices: {known_prices}")
         self.market_table.setRowCount(len(known_prices))
         for row, entry in enumerate(known_prices):
-            self.market_table.setItem(row, 0, QTableWidgetItem(str(entry.item_id)))
+            self.market_table.setItem(row, 0, QTableWidgetItem(str(get_item_by_id(entry.item_id).name)))
             self.market_table.setItem(row, 1, QTableWidgetItem(str(entry.city_market.city_name)))
             self.market_table.setItem(row, 2, QTableWidgetItem(str(entry.sell_price_min)))
             self.market_table.setItem(row, 3, QTableWidgetItem(str(entry.buy_price_max)))
