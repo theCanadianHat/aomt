@@ -21,6 +21,7 @@ For a given tier and resource the system will determine if profit will be made f
 
 == Crafting
 For a given item and quantity the system will provide quantities and prices for all required items to craft the requested item in the desired quantity.
+The system will also provide the best place to sell the item that is being crafted.
 
 == Item Appendix
 Display all the information captured about the known items.
