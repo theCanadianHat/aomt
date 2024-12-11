@@ -15,6 +15,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Albion Online Market Tool")
+        self.setMinimumHeight(400)
+        self.setMinimumWidth(600)
 
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -46,6 +48,8 @@ class MainWindow(QMainWindow):
         self.market_item_input = QLineEdit(self)
         completer_items = QCompleter(item_names, self)
         completer_items.activated.connect(self.add_clicked_item)
+        completer_items.setFilterMode(Qt.MatchContains)
+        completer_items.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         # completer_items.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
         # self.market_item_input.setText("t2_fiber")
         self.market_item_input.setCompleter(completer_items)
@@ -53,6 +57,7 @@ class MainWindow(QMainWindow):
         self.prices_layout.addWidget(self.market_item_input)
 
         self.selected_items_list = QListWidget(self)
+        self.selected_items_list.setMaximumHeight(100)
         self.selected_items_list.itemClicked.connect(self.add_clicked_item)
         self.prices_layout.addWidget(self.selected_items_list)
 
@@ -73,7 +78,7 @@ class MainWindow(QMainWindow):
         self.prices_layout.addLayout(self.market_buttons_layout)
 
         self.market_table = QTableWidget(0, 4, self)
-        self.market_table.setHorizontalHeaderLabels(["Item ID", "City", "Lowest Sell Price", "Highest Buy Price"])
+        self.market_table.setHorizontalHeaderLabels(["Item Name", "City", "Lowest Sell Price", "Highest Buy Price"])
         # self.market_table.setSortingEnabled(True)
         self.prices_layout.addWidget(self.market_table)
 
@@ -113,7 +118,7 @@ class MainWindow(QMainWindow):
         city = self.market_city_input.text()
         # Fetch data and populate the table
         prices: [Price] = get_prices_for_items(item_ids)
-        known_prices: [Price] = list(filter(lambda p: CityMarkets.UNKNOWN is not p.city_market, prices))
+        known_prices: [Price] = list(filter(lambda p: CityMarkets.UNKNOWN is not p.city_market and p.sell_price_min != 0 or p.buy_price_max != 0, prices))
         if DEBUG:
             print(f"known prices: {known_prices}")
         self.market_table.setRowCount(len(known_prices))
