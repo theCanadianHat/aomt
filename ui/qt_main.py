@@ -140,7 +140,9 @@ class MainWindow(QMainWindow):
         self.item_list = QListWidget()
         self.items_tab_layout.addWidget(self.item_list)
         for i in get_item_data():
-            self.item_list.addItem(QListWidgetItem(str(i)))
+            li = QListWidgetItem(str(i))
+            li.setData(Qt.UserRole, i)
+            self.item_list.addItem(li)
 
         self.adjustSize()
         self.setMinimumSize(self.sizeHint())
@@ -148,7 +150,7 @@ class MainWindow(QMainWindow):
     def filter_item_list(self, text):
         for index in range(self.item_list.count()):
             item = self.item_list.item(index)
-            item.setHidden(text.lower() not in item.text().lower())
+            item.setHidden(text.lower() not in item.data(Qt.UserRole).item_name.lower())
 
     def fetch_market_data(self):
         item_ids = [self.selected_items_list.item(index).data(Qt.UserRole).item_id

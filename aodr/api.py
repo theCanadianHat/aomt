@@ -138,18 +138,24 @@ def __create_and_populate_items(items: Union[List[dict], dict]):
                 unique_name = item[UNIQUENAME]
                 if CRAFTINGREQUIREMENTS in item:
                     reqs = item[CRAFTINGREQUIREMENTS]
-                    if CRAFTRESOURCE in reqs:
-                        res = reqs[CRAFTRESOURCE]
-                        if DEBUG:
-                            print("{} requires resources to craft".format(item[UNIQUENAME]))
-                        if isinstance(res, list):
-                            for r in res:
-                                if DEBUG:
-                                    print('\t{}: {}'.format(r['@count'], r[UNIQUENAME]))
-                        else:
+                    if isinstance(reqs, dict):
+                        if CRAFTRESOURCE in reqs:
+                            res = reqs[CRAFTRESOURCE]
                             if DEBUG:
-                                print('\t{}: {}'.format(res['@count'], res[UNIQUENAME]))
-                        ITEMS.append(Item(unique_name, __create_recipe(res)))
+                                print("{} requires resources to craft".format(item[UNIQUENAME]))
+                            if isinstance(res, list):
+                                for r in res:
+                                    if DEBUG:
+                                        print('\t{}: {}'.format(r['@count'], r[UNIQUENAME]))
+                            else:
+                                if DEBUG:
+                                    print('\t{}: {}'.format(res['@count'], res[UNIQUENAME]))
+                            ITEMS.append(Item(unique_name, __create_recipe(res)))
+                    if isinstance(reqs, list):
+                        for req in reqs:
+                            if CRAFTRESOURCE in req:
+                                res = req[CRAFTRESOURCE]
+                                ITEMS.append(Item(unique_name, __create_recipe(res)))
                 else:
                     ITEMS.append(Item(unique_name, Recipe()))
 
@@ -184,7 +190,7 @@ def get_item_data() -> List[Item]:
 
                 if item_to_update:
                     try:
-                        item_to_update.name = record['LocalizedNames']['EN-US']
+                        item_to_update.item_name = record['LocalizedNames']['EN-US']
                         item_to_update.description = record['LocalizedDescriptions']['EN-US']
                     except TypeError:
                         if DEBUG:

@@ -11,6 +11,8 @@ class ItemType(Enum):
     WEAPON = auto()
     GATHER = auto()
     TOOL = auto()
+    TOKEN = auto()
+    ARENA_TOKEN = auto()
 
 
 class ItemRef:
