@@ -4,15 +4,15 @@ from typing import List
 
 from dataclasses import asdict
 
-from aodp.api import get_price
+from aodp.api import get_prices_for_items
 from data import Price
 from data.constants.city_markets import CityMarkets
 
 DEBUG = False
 
 
-def __get_item_prices(item_ids: List[str]) -> List[Price] | None:
-    api_prices = get_price(item_ids)
+def get_item_prices(item_ids: List[str]) -> List[Price] | None:
+    api_prices = get_prices_for_items(item_ids)
 
     if api_prices is None:
         print("Received None from get_price")
@@ -42,7 +42,7 @@ def __get_min_sell_price_mins(prices: List[Price]) -> List[Price]:
 
 
 def get_cities_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
-    low_prices = sorted(__get_item_prices(item_ids), key=lambda p: p.sell_price_min)
+    low_prices = sorted(get_item_prices(item_ids), key=lambda p: p.sell_price_min)
 
     lowest = __get_min_sell_price_mins(low_prices)
 
@@ -54,7 +54,7 @@ def get_cities_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None
 
 
 def get_safe_cities_with_lowest_sell_price(item_ids: List[str]) -> List[Price] | None:
-    low_prices = sorted(__get_item_prices(item_ids), key=lambda price: price.sell_price_min)
+    low_prices = sorted(get_item_prices(item_ids), key=lambda price: price.sell_price_min)
     safe_prices = list(filter(lambda p: isinstance(p.city_market, CityMarkets) and not p.city_market.pvp, low_prices))
 
     lowest = __get_min_sell_price_mins(safe_prices)
@@ -83,7 +83,7 @@ def __get_max_buy_price_maxes(prices: List[Price]) -> List[Price]:
 
 
 def get_cities_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
-    prices = sorted(__get_item_prices(item_ids), key=lambda price: price.buy_price_max, reverse=True)
+    prices = sorted(get_item_prices(item_ids), key=lambda price: price.buy_price_max, reverse=True)
 
     highest = __get_max_buy_price_maxes(prices)
 
@@ -95,7 +95,7 @@ def get_cities_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None
 
 
 def get_safe_cities_with_highest_buy_price(item_ids: List[str]) -> List[Price] | None:
-    high_prices = sorted(__get_item_prices(item_ids), key=lambda price: price.buy_price_max, reverse=True)
+    high_prices = sorted(get_item_prices(item_ids), key=lambda price: price.buy_price_max, reverse=True)
     safe_prices = list(filter(lambda p: not p.city_market.pvp, high_prices))
 
     lowest = __get_max_buy_price_maxes(safe_prices)

@@ -2,3 +2,25 @@
 
 This is a simple project that utilizes the https://www.albion-online-data.com/[Albion Online Data project].
 Eventually I would like to be able to use this tool to determine easy moneymakers in the game.
+
+== Market
+This section talks about the main Market tab and it's features
+
+=== Prices
+Look up prices for multiple items at the same time
+
+=== Trade Routes
+For a given item it will look up the best buying price and best selling price.
+The system will calculate the profit gained from transporting the item.
+The source location will be the royal city with the lowest selling price.
+The destination location will be the royal city with the highest buying price.
+The investment cost and return on investment will be calculated.
+
+=== Refinement
+For a given tier and resource the system will determine if profit will be made for resource refinement.
+
+== Crafting
+For a given item and quantity the system will provide quantities and prices for all required items to craft the requested item in the desired quantity.
+
+== Item Appendix
+Display all the information captured about the known items.
