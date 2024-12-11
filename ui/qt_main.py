@@ -1,6 +1,8 @@
+from collections import defaultdict
+
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QLineEdit, QPushButton, \
-    QTableWidgetItem, QTableWidget, QListWidget, QCompleter, QListWidgetItem, QHBoxLayout, QLabel
+    QTableWidgetItem, QTableWidget, QListWidget, QCompleter, QListWidgetItem, QHBoxLayout, QLabel, QScrollArea
 
 from aodp.api import get_prices_for_items
 from aodr.api import get_item_data, get_item_by_id, get_item_by_name
@@ -10,11 +12,12 @@ from data.constants.recipes.recipe import Item
 
 DEBUG = False
 
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Albion Online Market Tool")
+        self.setMinimumHeight(400)
+        self.setMinimumWidth(600)
 
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -38,7 +41,6 @@ class MainWindow(QMainWindow):
         self.tr_info = QLabel('This is a placeholder for some stuff')
         self.trade_routes_layout.addWidget(self.tr_info)
 
-
         items = get_item_data()
         item_names = [item.name for item in items if item is not None]
         test = {i.item_id: i.name for i in items if i is not None}
@@ -46,13 +48,13 @@ class MainWindow(QMainWindow):
         self.market_item_input = QLineEdit(self)
         completer_items = QCompleter(item_names, self)
         completer_items.activated.connect(self.add_clicked_item)
-        # completer_items.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
-        # self.market_item_input.setText("t2_fiber")
+        completer_items.setFilterMode(Qt.MatchContains)
+        completer_items.setCaseSensitivity(Qt.CaseInsensitive)
         self.market_item_input.setCompleter(completer_items)
-        # self.market_item_input.click.connect(self.add_item)
         self.prices_layout.addWidget(self.market_item_input)
 
         self.selected_items_list = QListWidget(self)
+        self.selected_items_list.setMaximumHeight(100)
         self.selected_items_list.itemClicked.connect(self.add_clicked_item)
         self.prices_layout.addWidget(self.selected_items_list)
 
@@ -61,7 +63,6 @@ class MainWindow(QMainWindow):
         self.prices_layout.addWidget(self.market_city_input)
 
         self.market_buttons_layout = QHBoxLayout()
-
         self.market_button = QPushButton("Fetch Market Data", self)
         self.market_button.clicked.connect(self.fetch_market_data)
         self.market_buttons_layout.addWidget(self.market_button)
@@ -72,10 +73,13 @@ class MainWindow(QMainWindow):
 
         self.prices_layout.addLayout(self.market_buttons_layout)
 
-        self.market_table = QTableWidget(0, 4, self)
-        self.market_table.setHorizontalHeaderLabels(["Item ID", "City", "Lowest Sell Price", "Highest Buy Price"])
-        # self.market_table.setSortingEnabled(True)
-        self.prices_layout.addWidget(self.market_table)
+        self.market_result_area = QScrollArea()
+        self.market_result_widget = QWidget()
+        self.market_result_layout = QVBoxLayout()
+        self.market_result_widget.setLayout(self.market_result_layout)
+        self.market_result_area.setWidget(self.market_result_widget)
+        self.market_result_area.setWidgetResizable(True)
+        self.prices_layout.addWidget(self.market_result_area)
 
         # Create Crafting Tools tab
         self.crafting_tab = QWidget()
@@ -102,47 +106,55 @@ class MainWindow(QMainWindow):
         self.centralWidget().adjustSize()
 
     def fetch_market_data(self):
-        self.market_table.setSortingEnabled(False)
-        # Placeholder function to fetch market data
-        item_ids = []
-        for index in range(self.selected_items_list.count()):
-            d: Item = self.selected_items_list.item(index).data(Qt.UserRole)
-            if d:
-                item_ids.append(d.item_id)
-
+        item_ids = [self.selected_items_list.item(index).data(Qt.UserRole).item_id
+                    for index in range(self.selected_items_list.count())]
         city = self.market_city_input.text()
+
         # Fetch data and populate the table
-        prices: [Price] = get_prices_for_items(item_ids)
-        known_prices: [Price] = list(filter(lambda p: CityMarkets.UNKNOWN is not p.city_market, prices))
+        prices = get_prices_for_items(item_ids)
+        known_prices = list(filter(lambda p: CityMarkets.UNKNOWN is not p.city_market and p.sell_price_min != 0 or p.buy_price_max != 0, prices))
+        result_map = defaultdict(list)
+        for p in known_prices:
+            result_map[p.item_id].append(p)
+
         if DEBUG:
             print(f"known prices: {known_prices}")
-        self.market_table.setRowCount(len(known_prices))
-        for row, entry in enumerate(known_prices):
-            self.market_table.setItem(row, 0, QTableWidgetItem(str(get_item_by_id(entry.item_id).name)))
-            self.market_table.setItem(row, 1, QTableWidgetItem(str(entry.city_market.city_name)))
-            self.market_table.setItem(row, 2, QTableWidgetItem(str(entry.sell_price_min)))
-            self.market_table.setItem(row, 3, QTableWidgetItem(str(entry.buy_price_max)))
+            print(f"result map: {result_map}")
 
-        # Print table contents for debugging
+        for item_id, price_list in result_map.items():
+            wrapper = QWidget()
+            wrapper_layout = QVBoxLayout()
+            wrapper.setLayout(wrapper_layout)
+            label = QLabel(get_item_by_id(item_id).name)
+            wrapper_layout.addWidget(label)
+            market_table = QTableWidget(0, 3, self)
+            market_table.setMaximumHeight(len(price_list) * 20)
+            market_table.setHorizontalHeaderLabels(["City", "Lowest Sell Price", "Highest Buy Price"])
+            market_table.setSortingEnabled(False)
+            market_table.setRowCount(len(price_list))
+            wrapper_layout.addWidget(market_table)
+            for row, price in enumerate(price_list):
+                market_table.setItem(row, 0, QTableWidgetItem(str(price.city_market.city_name)))
+                market_table.setItem(row, 1, QTableWidgetItem(str(price.sell_price_min)))
+                market_table.setItem(row, 2, QTableWidgetItem(str(price.buy_price_max)))
+            market_table.setSortingEnabled(True)
+            self.market_result_layout.addWidget(wrapper)
+
         if DEBUG:
-            for row in range(self.market_table.rowCount()):
-                for column in range(self.market_table.columnCount()):
-                    item = self.market_table.item(row, column)
+            for row in range(market_table.rowCount()):
+                for column in range(market_table.columnCount()):
+                    item = market_table.item(row, column)
                     if item:
                         print(f"Table item at ({row}, {column}): {item.text()}")
                     else:
                         print(f"Table item at ({row}, {column}): None")
-        self.market_table.setSortingEnabled(True)
 
     def clear_search_list(self):
         self.selected_items_list.clear()
 
     def fetch_crafting_data(self):
-        # Placeholder function to fetch crafting data
         item_id = self.crafting_item_input.text()
         quantity = self.crafting_quantity_input.text()
-        # Fetch data and populate the table
-        # Example data
         data = [
             {"material": "Material 1", "quantity": 10, "price": 50},
             {"material": "Material 2", "quantity": 5, "price": 30}
