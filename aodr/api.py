@@ -2,7 +2,7 @@ from typing import List, Union
 
 import requests
 
-from data.constants.recipes.recipe import Recipe, Item
+from data.constants.recipes.recipe import Recipe, Item, ItemRef
 from util.quantity import Quantity
 
 CRAFTRESOURCE = 'craftresource'
@@ -110,9 +110,9 @@ def __create_recipe(data: Union[List[dict], dict]) -> Recipe:
     recipe = Recipe([])
     if isinstance(data, list):
         for item in data:
-            recipe.inputs.append(Quantity(Item(item['@uniquename']), item['@count']))
+            recipe.inputs.append(Quantity(ItemRef(item['@uniquename']), item['@count']))
     elif isinstance(data, dict):
-        recipe.inputs.append(Quantity(Item(data['@uniquename']), data['@count']))
+        recipe.inputs.append(Quantity(ItemRef(data['@uniquename']), data['@count']))
     return recipe
 
 
