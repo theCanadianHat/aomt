@@ -15,6 +15,18 @@ class ItemType(Enum):
     ARENA_TOKEN = auto()
 
 
+class Tier(Enum):
+    UNKNOWN = auto()
+    ONE = auto()
+    TWO = auto()
+    THREE = auto()
+    FOUR = auto()
+    FIVE = auto()
+    SIX = auto()
+    SEVEN = auto()
+    EIGHT = auto()
+
+
 class ItemRef:
     def __init__(self, item_id: str, item_name: str = None):
         self.item_id = item_id
@@ -23,20 +35,14 @@ class ItemRef:
 
 class Item(ItemRef):
 
-    def __init__(self, item_id: str, recipe: Optional['Recipe'] = None):
+    def __init__(self, item_id: str, recipes: Optional['[Recipe]'] = None):
         ItemRef.__init__(self, item_id, item_id)
         self.description = ''
-        self.recipe = recipe
-        self.type = ItemType.UNKNOWN
+        self.recipes = recipes if recipes is not None else []
+        self.item_type = ItemType.UNKNOWN
 
     def __str__(self):
-        return (f"{{\n"
-                f"  \"name\": \"{self.item_name}\",\n"
-                f"  \"description\": \"{self.description}\",\n"
-                f"  \"recipe\": {self.recipe},\n"
-                f"  \"item_id\": \"{self.item_id}\",\n"
-                f"  \"type\": \"{self.type.name}\"\n"
-                f"}}")
+        return to_json_string(self, indent=2)
 
     def __repr__(self):
         return self.__str__()
@@ -59,8 +65,14 @@ class Recipe:
     def __str__(self):
         return to_json_string(self, indent=2)
 
+    def __repr__(self):
+        return self.__str__()
 
-def to_json_string(obj, indent=0):
+
+def to_json_string(obj, indent=0, visited=None):
+    if visited is None:
+        visited = set()
+
     def format_value(value, indent_level):
         if isinstance(value, (str, int, float, bool, type(None))):
             return f"\"{value}\"" if isinstance(value, str) else str(value)
@@ -68,11 +80,18 @@ def to_json_string(obj, indent=0):
             items = [format_value(item, indent_level + 2) for item in value]
             return "[\n" + ",\n".join(
                 " " * (indent_level + 2) + item for item in items) + "\n" + " " * indent_level + "]"
+        elif isinstance(value, Enum):
+            return f"\"{value.name}\""
         elif hasattr(value, '__dict__'):
-            return to_json_string(value, indent_level)
+            return to_json_string(value, indent_level, visited)
         else:
             return str(value)
 
+    if id(obj) in visited:
+        return "\"<circular reference>\""
+
+    visited.add(id(obj))
     obj_dict = obj.__dict__
     items = [f"\"{key}\": {format_value(value, indent + 2)}" for key, value in obj_dict.items()]
+    visited.remove(id(obj))
     return "{\n" + ",\n".join(" " * (indent + 2) + item for item in items) + "\n" + " " * indent + "}"

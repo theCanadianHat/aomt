@@ -1,8 +1,8 @@
-from typing import List, Union
+from typing import List, Union, Optional
 
 import requests
 
-from data.constants.recipes.recipe import Recipe, Item, ItemRef
+from data.constants.recipes.recipe import Recipe, Item, ItemRef, to_json_string
 from util.quantity import Quantity
 
 CRAFTRESOURCE = 'craftresource'
@@ -15,6 +15,30 @@ DEBUG = False
 ITEMS_URL = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/refs/heads/master/items.json'
 FORMATTED_ITEMS_URL = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/refs/heads/master/formatted/items.json'
 ITEMS: List[Item] = []
+
+
+class RawDataKeys:
+    UNIQUE_NAME = '@uniquename'
+    SHOP_CATEGORY = '@shopcategory'
+    SHOP_SUBCATEGORY1 = '@shopsubcategory1'
+    CRAFTING_CATEGORY = '@craftingcategory'
+    TIER = '@tier'
+    WEIGHT = '@weight'
+    MAX_STACK_SIZE = '@maxstacksize'
+    UI_CRAFT_SOUND_START = '@uicraftsoundstart'
+    UI_CRAFT_SOUND_FINISH = '@uicraftsoundfinish'
+    FAST_TRAVEL_FACTOR = '@fasttravelfactor'
+    ITEM_VALUE = '@itemvalue'
+    ENCHANTMENT_LEVEL = '@enchantmentlevel'
+    DESCRIPTION_LOCATAG = '@descriptionlocatag'
+    CRAFTING_REQUIREMENTS = 'craftingrequirements'
+    SILVER = '@silver'
+    TIME = '@time'
+    CRAFTING_FOCUS = '@craftingfocus'
+    AMOUNT_CRAFTED = '@amountcrafted'
+    CRAFT_RESOURCE = 'craftresource'
+    COUNT = '@count'
+
 
 '''
 items.@xmlns:xsi
@@ -99,6 +123,95 @@ CRAFTABLE_ITEM_TYPES = [
 ]
 
 
+# external
+class CraftResource:
+    def __init__(self,
+                 unique_name: str,
+                 count: int,
+                 enchantment_level: int = 0):
+        self.unique_name = unique_name
+        self.count = count
+        self.enchantment_level = enchantment_level
+
+    @classmethod
+    def from_dict(cls, data: Union[dict, list]):
+        if isinstance(data, list):
+            return [cls.from_dict(d) for  d in data]
+        return cls(
+            unique_name=data.get(RawDataKeys.UNIQUE_NAME, ''),
+            count=int(data.get(RawDataKeys.COUNT, 0)),
+            enchantment_level=int(data.get(RawDataKeys.ENCHANTMENT_LEVEL, 0))
+        )
+
+    def __str__(self):
+        return to_json_string(self, indent=2)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class CraftingRequirement:
+    def __init__(self,
+                 silver: int = 0,
+                 amount_crafted: int = 0,
+                 craft_resource: Optional[List[CraftResource]] = None):
+        self.silver = silver
+        self.amount_crafted = amount_crafted
+        self.craft_resources = craft_resource if craft_resource is not None else []
+
+    @classmethod
+    def from_dict(cls, data: Union[dict, list]):
+        if isinstance(data, list):
+            return [cls.from_dict(d) for  d in data]
+        craft_resource = CraftResource.from_dict(data.get(CRAFTRESOURCE, []))
+        return cls(
+            silver=int(data.get(RawDataKeys.SILVER, 0)),
+            amount_crafted=int(data.get(RawDataKeys.AMOUNT_CRAFTED, 1)),
+            craft_resource=craft_resource
+        )
+
+    def __str__(self):
+        return to_json_string(self, indent=2)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ExternalItem:
+    def __init__(self,
+                 unique_name: str = '',
+                 tier: int = 0,
+                 enchantment_level: int = 0,
+                 crafting_requirements: Optional[List[CraftingRequirement]] = None):
+        self.unique_name = unique_name
+        self.tier = tier
+        self.enchantment_level = enchantment_level
+        self.crafting_requirements = crafting_requirements if crafting_requirements is not None else []
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        crafting_requirements = CraftingRequirement.from_dict(data.get(RawDataKeys.CRAFTING_REQUIREMENTS, []))
+        return cls(
+            unique_name=data.get(RawDataKeys.UNIQUE_NAME, ''),
+            tier=int(data.get(RawDataKeys.TIER, 0)),
+            enchantment_level=int(data.get(RawDataKeys.ENCHANTMENT_LEVEL, 0)),
+            crafting_requirements=crafting_requirements
+        )
+
+    def __str__(self):
+        return to_json_string(self, indent=2)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+RAW_ITEMS: List[ExternalItem] = []
+
+
+def get_raw_items():
+    return RAW_ITEMS
+
+
 def __is_craftable_item(item_type: str) -> bool:
     try:
         return CRAFTABLE_ITEM_TYPES.index(item_type) > 0
@@ -116,48 +229,48 @@ def __create_recipe(data: Union[List[dict], dict]) -> Recipe:
     return recipe
 
 
+def __create_recipe_list(crafting_requirements):
+    recipes: [Recipe] = []
+    # has single Recipe
+    if isinstance(crafting_requirements, dict):
+        # can use resources to craft
+        if CRAFTRESOURCE in crafting_requirements:
+            crafting_resource = crafting_requirements[CRAFTRESOURCE]
+            if crafting_resource:
+                recipes.append(__create_recipe(crafting_resource))
+    # has multiple recipes
+    if isinstance(crafting_requirements, list):
+        for index, requirement in enumerate(crafting_requirements):
+            if CRAFTRESOURCE in requirement:
+                crafting_res = requirement[CRAFTRESOURCE]
+                if crafting_res:
+                    recipes.append(__create_recipe(crafting_res))
+    return recipes
+
+
+def __create_and_add_item(item):
+    unique_name = item[UNIQUENAME]
+    # has a recipe
+    if CRAFTINGREQUIREMENTS in item:
+        crafting_requirements = item[CRAFTINGREQUIREMENTS]
+        recipes: [Recipe] = __create_recipe_list(crafting_requirements)
+        ITEMS.append(Item(unique_name, recipes))
+    else:
+        ITEMS.append(Item(unique_name, Recipe()))
+
+
 def __create_and_populate_items(items: Union[List[dict], dict]):
+    # single Item
     if isinstance(items, dict):
         if UNIQUENAME in items:
-            unique_name = items[UNIQUENAME]
-            if CRAFTINGREQUIREMENTS in items:
-                reqs = items[CRAFTINGREQUIREMENTS]
-                res: List = reqs[CRAFTRESOURCE]
-                if res:
-                    if DEBUG:
-                        print("{} requires resources to craft".format(items[UNIQUENAME]))
-                        for r in res:
-                            print('\t{}: {}'.format(res[r]['@count'], res[r][UNIQUENAME]))
-                ITEMS.append(Item(unique_name, __create_recipe(res)))
-            else:
-                ITEMS.append(Item(unique_name, Recipe()))
+            __create_and_add_item(items)
+            RAW_ITEMS.append(ExternalItem.from_dict(items))
 
     if isinstance(items, list):
         for item in items:
             if UNIQUENAME in item:
-                unique_name = item[UNIQUENAME]
-                if CRAFTINGREQUIREMENTS in item:
-                    reqs = item[CRAFTINGREQUIREMENTS]
-                    if isinstance(reqs, dict):
-                        if CRAFTRESOURCE in reqs:
-                            res = reqs[CRAFTRESOURCE]
-                            if DEBUG:
-                                print("{} requires resources to craft".format(item[UNIQUENAME]))
-                            if isinstance(res, list):
-                                for r in res:
-                                    if DEBUG:
-                                        print('\t{}: {}'.format(r['@count'], r[UNIQUENAME]))
-                            else:
-                                if DEBUG:
-                                    print('\t{}: {}'.format(res['@count'], res[UNIQUENAME]))
-                            ITEMS.append(Item(unique_name, __create_recipe(res)))
-                    if isinstance(reqs, list):
-                        for req in reqs:
-                            if CRAFTRESOURCE in req:
-                                res = req[CRAFTRESOURCE]
-                                ITEMS.append(Item(unique_name, __create_recipe(res)))
-                else:
-                    ITEMS.append(Item(unique_name, Recipe()))
+                __create_and_add_item(item)
+                RAW_ITEMS.append(ExternalItem.from_dict(item))
 
 
 def get_item_data() -> List[Item]:
@@ -206,7 +319,7 @@ def get_item_by_id(item_id: str) -> Item | None:
 
 
 def get_item_by_name(item_name: str) -> Item | None:
-    return next(filter(lambda i: i.name == item_name, get_item_data()), None)
+    return next(filter(lambda i: i.item_name == item_name, get_item_data()), None)
 
 
 if __name__ == '__main__':

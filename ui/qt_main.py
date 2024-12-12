@@ -6,8 +6,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTa
     QComboBox
 
 from aodp.api import get_prices_for_items
-from aodr.api import get_item_data, get_item_by_id, get_item_by_name
-from data import Price
+from aodr.api import get_item_data, get_item_by_id, get_item_by_name, get_raw_items, RAW_ITEMS
 from data.constants.city_markets import CityMarkets
 from data.constants.recipes.recipe import Item, ItemType
 
@@ -133,13 +132,15 @@ class MainWindow(QMainWindow):
         self.items_tab.setLayout(self.items_tab_layout)
         self.tabs.addTab(self.items_tab, "Items")
 
+        # todo add inputs for each property to filter by
         self.item_list_filter = QLineEdit()
         self.item_list_filter.textChanged.connect(self.filter_item_list)
         self.items_tab_layout.addWidget(self.item_list_filter)
 
         self.item_list = QListWidget()
         self.items_tab_layout.addWidget(self.item_list)
-        for i in get_item_data():
+        get_item_data()
+        for i in RAW_ITEMS:
             li = QListWidgetItem(str(i))
             li.setData(Qt.UserRole, i)
             self.item_list.addItem(li)
@@ -150,7 +151,7 @@ class MainWindow(QMainWindow):
     def filter_item_list(self, text):
         for index in range(self.item_list.count()):
             item = self.item_list.item(index)
-            item.setHidden(text.lower() not in item.data(Qt.UserRole).item_name.lower())
+            item.setHidden(text.lower() not in item.data(Qt.UserRole).unique_name.lower())
 
     def fetch_market_data(self):
         item_ids = [self.selected_items_list.item(index).data(Qt.UserRole).item_id
@@ -217,11 +218,15 @@ class MainWindow(QMainWindow):
         item_id = self.crafting_item_input.text()
         quantity = self.crafting_quantity_input.text()
         item = get_item_by_name(item_id)
-        self.crafting_table.setRowCount(len(item.recipe.inputs))
-        for row, entry in enumerate(item.recipe.inputs):
-            self.crafting_table.setItem(row, 0, QTableWidgetItem(entry.content.name))
-            self.crafting_table.setItem(row, 1, QTableWidgetItem(str(entry.quantity)))
-            self.crafting_table.setItem(row, 2, QTableWidgetItem(str("price")))
+        if len(item.recipes) > 0:
+            self.crafting_table.setRowCount(len(item.recipes[0].inputs))
+            for row, entry in enumerate(item.recipes[0].inputs):
+                self.crafting_table.setItem(row, 0, QTableWidgetItem(entry.content.item_id))
+                self.crafting_table.setItem(row, 1, QTableWidgetItem(str(entry.quantity)))
+                self.crafting_table.setItem(row, 2, QTableWidgetItem(str("price")))
+
+        # todo get price information for resources before showing table
+        #   figure out where to buy what from and where to sell the crafted item to
 
     def add_clicked_item(self, item: str):
         new_item = QListWidgetItem(item)
